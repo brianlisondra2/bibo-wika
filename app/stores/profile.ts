@@ -7,6 +7,7 @@ const KEY = 'bibo.profile.v1'
 
 interface ProfileState {
   ready: boolean
+  id: string
   buddy: BuddyName | null
   lang: Lang | null
   band: 'usbong' | 'puno'
@@ -23,6 +24,7 @@ interface ProfileState {
 export const useProfile = defineStore('profile', {
   state: (): ProfileState => ({
     ready: false,
+    id: '',
     buddy: null,
     lang: null,
     band: 'usbong',
@@ -39,6 +41,10 @@ export const useProfile = defineStore('profile', {
       if (this.ready) return
       const saved = await get<Partial<ProfileState>>(KEY).catch(() => null)
       if (saved) Object.assign(this, saved)
+      if (!this.id && import.meta.client) {
+        this.id = globalThis.crypto.randomUUID()
+        await this.persist()
+      }
       this.ready = true
     },
 
@@ -65,6 +71,24 @@ export const useProfile = defineStore('profile', {
 
     async pickLang(lang: Lang) {
       this.lang = lang
+      await this.persist()
+    },
+
+    async activateRemote(remote: {
+      id: string
+      avatar: Record<string, string>
+      activeLang: Lang
+      band: 'usbong' | 'puno'
+      xp: number
+    }, boxes: Record<string, number>) {
+      const buddy = remote.avatar.buddy
+      const validBuddies: BuddyName[] = ['tikoy', 'kalab', 'haribon', 'pawi', 'maya', 'sari']
+      this.id = remote.id
+      this.buddy = validBuddies.includes(buddy as BuddyName) ? (buddy as BuddyName) : 'tikoy'
+      this.lang = remote.activeLang
+      this.band = remote.band
+      this.xp = remote.xp
+      this.boxes = boxes
       await this.persist()
     },
 
